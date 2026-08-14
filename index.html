@@ -96,23 +96,40 @@
         <!-- Main Dynamic Content Area -->
         <main class="flex-grow p-6 md:p-8 overflow-y-auto">
             
-            <!-- Breadcrumb Navigation & View Toggle Toolbar -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <!-- Breadcrumb Navigation & Toolbar -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <!-- Breadcrumb Navigation Bar -->
                 <nav id="breadcrumb" aria-label="Breadcrumb" class="text-sm font-medium flex items-center gap-2 overflow-x-auto pb-1">
                     <!-- Dynamically populated -->
                 </nav>
 
-                <!-- View Mode Switcher Toolbar -->
-                <div class="toolbar-bg flex items-center gap-1 p-1 rounded-lg border self-start sm:self-auto shrink-0 transition-colors duration-200">
-                    <button type="button" onclick="setViewMode('grid')" id="gridViewBtn" 
-                        class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer">
-                        <span>🔲</span> Grid
-                    </button>
-                    <button type="button" onclick="setViewMode('list')" id="listViewBtn" 
-                        class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer">
-                        <span>📋</span> List
-                    </button>
+                <!-- Tools Toolbar (File Type Filter + View Mode Switcher) -->
+                <div class="flex flex-wrap items-center gap-3 self-start lg:self-auto shrink-0">
+                    <!-- File Type Filter Dropdown -->
+                    <div class="flex items-center gap-1.5 toolbar-bg px-3 py-1.5 rounded-lg border transition-colors duration-200">
+                        <span class="text-xs opacity-65 font-medium">Filter:</span>
+                        <select id="fileTypeFilter" onchange="handleTypeFilter(this.value)" class="theme-input px-2 py-1 rounded-md text-xs font-medium border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors duration-200">
+                            <option value="all">All Files & Folders</option>
+                            <option value="pdf">PDF (.pdf)</option>
+                            <option value="docx">Word (.docx / .doc)</option>
+                            <option value="ppt">Presentation (.pptx / .ppt)</option>
+                            <option value="excel">Excel (.xlsx / .xls)</option>
+                            <option value="image">Images (.png / .jpg)</option>
+                            <option value="archive">Archives (.zip / .rar)</option>
+                        </select>
+                    </div>
+
+                    <!-- View Mode Switcher Toolbar -->
+                    <div class="toolbar-bg flex items-center gap-1 p-1 rounded-lg border transition-colors duration-200">
+                        <button type="button" onclick="setViewMode('grid')" id="gridViewBtn" 
+                            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer">
+                            <span>🔲</span> Grid
+                        </button>
+                        <button type="button" onclick="setViewMode('list')" id="listViewBtn" 
+                            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer">
+                            <span>📋</span> List
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -190,6 +207,7 @@
         let currentPath = []; 
         let isSearching = false;
         let searchQuery = "";
+        let selectedFileType = "all";
         let flatFileList = [];
         let viewMode = localStorage.getItem('viewMode') || 'grid';
 
@@ -231,7 +249,6 @@
                 localStorage.setItem('theme', theme);
             }
             
-            // Refresh toggle buttons styling to match theme state
             updateViewModeButtonStyles();
         }
 
@@ -350,6 +367,11 @@
             renderSidebar();
         }
 
+        function handleTypeFilter(type) {
+            selectedFileType = type;
+            render();
+        }
+
         function navigateTo(index) {
             if (index === -1) {
                 currentPath = [];
@@ -362,12 +384,23 @@
             renderSidebar();
         }
 
+        function matchesFileType(filename, filterType) {
+            if (filterType === 'all') return true;
+            const lower = filename.toLowerCase();
+            if (filterType === 'pdf') return lower.endsWith('.pdf');
+            if (filterType === 'docx') return lower.endsWith('.docx') || lower.endsWith('.doc');
+            if (filterType === 'ppt') return lower.endsWith('.pptx') || lower.endsWith('.ppt');
+            if (filterType === 'excel') return lower.endsWith('.xlsx') || lower.endsWith('.xls');
+            if (filterType === 'image') return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg');
+            if (filterType === 'archive') return lower.endsWith('.zip') || lower.endsWith('.rar');
+            return true;
+        }
+
         function render() {
             const grid = document.getElementById('contentGrid');
             const breadcrumb = document.getElementById('breadcrumb');
             grid.innerHTML = '';
 
-            // Update container layout based on viewMode
             if (viewMode === 'list') {
                 grid.className = "flex flex-col gap-2";
             } else {
@@ -380,7 +413,10 @@
                     <span class="opacity-40">/</span>
                     <span class="text-indigo-500 font-semibold">Search Results for "${searchQuery}"</span>`;
 
-                const matchedFiles = flatFileList.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                let matchedFiles = flatFileList.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                if (selectedFileType !== 'all') {
+                    matchedFiles = matchedFiles.filter(f => matchesFileType(f.name, selectedFileType));
+                }
                 
                 if (matchedFiles.length === 0) {
                     grid.innerHTML = `
@@ -413,7 +449,24 @@
                 return;
             }
 
-            folder.children.forEach(item => {
+            let itemsToDisplay = folder.children;
+            if (selectedFileType !== 'all') {
+                itemsToDisplay = itemsToDisplay.filter(item => {
+                    if (item.type === 'folder') return true; 
+                    return matchesFileType(item.name, selectedFileType);
+                });
+            }
+
+            if (itemsToDisplay.length === 0) {
+                grid.innerHTML = `
+                    <div class="theme-card col-span-full text-center py-16 rounded-xl border">
+                        <p class="text-3xl mb-2">🏷️</p>
+                        <p class="font-medium">No items match the selected file type filter</p>
+                    </div>`;
+                return;
+            }
+
+            itemsToDisplay.forEach(item => {
                 grid.appendChild(createCard(item));
             });
         }
@@ -457,6 +510,10 @@
                     icon = '📈';
                     badgeText = 'Excel';
                     badgeClass = 'bg-emerald-500/10 text-emerald-500';
+                } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+                    icon = '🖼️';
+                    badgeText = 'Image';
+                    badgeClass = 'bg-teal-500/10 text-teal-500';
                 } else if (lowerName.endsWith('.zip') || lowerName.endsWith('.rar')) {
                     icon = '📦';
                     badgeText = 'Archive';
@@ -512,6 +569,7 @@
             if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) icon = '📝';
             else if (lowerName.endsWith('.pptx') || lowerName.endsWith('.ppt')) icon = '📊';
             else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) icon = '📈';
+            else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) icon = '🖼️';
             else if (lowerName.endsWith('.zip') || lowerName.endsWith('.rar')) icon = '📦';
             modalIcon.textContent = icon;
 
@@ -520,6 +578,8 @@
             if (lowerName.endsWith('.pdf')) {
                 const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(item.path)}`;
                 bodyContainer.innerHTML = `<iframe src="${viewerUrl}" class="w-full h-full border-0"></iframe>`;
+            } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+                bodyContainer.innerHTML = `<img src="${item.path}" alt="${item.name}" class="max-w-full max-h-full object-contain rounded-lg p-2">`;
             } else {
                 bodyContainer.innerHTML = `
                     <div class="text-center p-6">
