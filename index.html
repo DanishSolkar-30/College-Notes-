@@ -14,7 +14,7 @@
         <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight text-slate-900">College Notes Portal</h1>
-                <p class="text-sm text-slate-500">Automatically synced with your live repository structure.</p>
+                <p class="text-sm text-slate-500">Structured repository for all semesters and subjects.</p>
             </div>
             <!-- Global Live Search Bar -->
             <div class="w-full md:w-80">
@@ -37,7 +37,7 @@
         <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <!-- Loading state -->
             <div class="col-span-full text-center py-16 text-slate-400">
-                <p class="animate-pulse">Fetching your repository folders...</p>
+                <p class="animate-pulse">Loading repository notes...</p>
             </div>
         </div>
     </main>
@@ -49,17 +49,15 @@
 
     <!-- Application Script Logic -->
     <script>
-        // CONFIGURATION: Change these to match your GitHub username and repository name
         const GITHUB_USER = "DanishSolkar-30";
         const GITHUB_REPO = "College-Notes-";
         
         let repoData = { name: "Home", type: "folder", children: [] };
-        let currentPath = []; 
+        let currentPath = []; // Tracks exact folder hierarchy steps
         let isSearching = false;
         let searchQuery = "";
-        let flatFileList = []; // Used for instant global search
+        let flatFileList = [];
 
-        // Fetch directory contents directly from GitHub REST API recursively
         async function fetchRepoTree() {
             try {
                 const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/git/trees/main?recursive=1`);
@@ -73,18 +71,17 @@
                 document.getElementById('contentGrid').innerHTML = `
                     <div class="col-span-full text-center py-12 text-red-500 bg-white rounded-xl border border-slate-200">
                         <p class="font-medium">Could not automatically load repository contents.</p>
-                        <p class="text-xs text-slate-400 mt-1">Make sure your repo name is correct and public.</p>
+                        <p class="text-xs text-slate-400 mt-1">Please verify your repository configuration.</p>
                     </div>`;
             }
         }
 
-        // Transforms GitHub's flat file array into a nested folder tree structure
         function buildFileTree(gitFiles) {
             let root = { name: "Home", type: "folder", children: [] };
             
             gitFiles.forEach(file => {
-                // Ignore hidden files, index.html itself, or .gitignore elements
-                if (file.path === "index.html" || file.path.startsWith(".")) return;
+                // Ignore system files, index.html, or configuration remnants
+                if (file.path === "index.html" || file.path === "notes.json" || file.path.startsWith(".")) return;
 
                 const parts = file.path.split("/");
                 let currentLevel = root.children;
@@ -95,13 +92,11 @@
 
                     if (!existingNode) {
                         if (isLast && file.type === "blob") {
-                            // It's a file
                             const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${file.path}`;
                             const newNode = { name: part, type: "file", path: rawUrl };
                             currentLevel.push(newNode);
                             flatFileList.push({ name: part, path: rawUrl });
                         } else {
-                            // It's a folder
                             const newNode = { name: part, type: "folder", children: [] };
                             currentLevel.push(newNode);
                             currentLevel = newNode.children;
@@ -117,11 +112,13 @@
             repoData = root;
         }
 
+        // Resolves the exact folder object based on the currentPath array
         function getCurrentFolder() {
             let current = repoData;
             for (let segment of currentPath) {
                 if (!current.children) return null;
                 current = current.children.find(c => c.name === segment);
+                if (!current) return repoData; // Fallback safety check
             }
             return current;
         }
@@ -129,6 +126,18 @@
         function handleSearch(query) {
             searchQuery = query.trim();
             isSearching = searchQuery.length > 0;
+            render();
+        }
+
+        // Robust navigation jump function for clean backtracking
+        function navigateTo(index) {
+            if (index === -1) {
+                currentPath = [];
+            } else {
+                currentPath = currentPath.slice(0, index + 1);
+            }
+            isSearching = false;
+            document.getElementById('searchInput').value = '';
             render();
         }
 
@@ -140,7 +149,7 @@
             // 1. Render Search Results View
             if (isSearching) {
                 breadcrumb.innerHTML = `
-                    <span class="text-slate-500 cursor-pointer hover:underline" onclick="clearSearch()">Home</span>
+                    <span class="text-slate-500 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>
                     <span class="text-slate-300">/</span>
                     <span class="text-indigo-600 font-semibold">Search Results for "${searchQuery}"</span>`;
 
@@ -161,13 +170,10 @@
                 return;
             }
 
-            // 2. Render Breadcrumbs
-            let bHtml = `<span class="text-slate-600 cursor-pointer hover:underline" onclick="currentPath=[]; render();">Home</span>`;
-            let pathAccumulator = [];
-            currentPath.forEach(segment => {
-                pathAccumulator.push(segment);
-                let pCopy = [...pathAccumulator];
-                bHtml += `<span class="text-slate-300">/</span><span class="text-indigo-600 cursor-pointer hover:underline" onclick="currentPath = ${JSON.stringify(pCopy)}; render();">${segment}</span>`;
+            // 2. Render Precise Breadcrumb Navigation (Backtracking Support)
+            let bHtml = `<span class="text-slate-600 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>`;
+            currentPath.forEach((segment, index) => {
+                bHtml += `<span class="text-slate-300">/</span><span class="text-indigo-600 cursor-pointer hover:underline" onclick="navigateTo(${index})">${segment}</span>`;
             });
             breadcrumb.innerHTML = bHtml;
 
@@ -224,13 +230,6 @@
                     </a>`;
             }
             return card;
-        }
-
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            isSearching = false;
-            searchQuery = '';
-            render();
         }
 
         // Initialize script on page load
