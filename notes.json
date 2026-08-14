@@ -1,0 +1,20 @@
+{
+    "name": "Home",
+    "type": "folder",
+    "children": [
+        {
+            "name": "Sem-3",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "DBMS",
+                    "type": "folder",
+                    "children": [
+                        { "name": "Normalization Notes.pdf", "type": "file", "path": "notes/Sem-3/DBMS/Normalization Notes.pdf" },
+                        { "name": "Lab Assignments.docx", "type": "file", "path": "notes/Sem-3/DBMS/Lab Assignments.docx" }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Notes Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 py-6 px-8 shadow-xs">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900">College Notes</h1>
+                <p class="text-sm text-slate-500">Access structured study materials, PDFs, and Word documents.</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="max-w-5xl mx-auto w-full p-6 flex-grow">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumb" class="text-sm text-indigo-600 font-medium mb-6 flex items-center gap-2">
+            <span class="cursor-pointer hover:underline" onclick="currentPath=[]; render();">Home</span>
+        </div>
+
+        <!-- File/Folder Grid Container -->
+        <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- Dynamically populated cards -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+        Hosted with GitHub Pages • Minimalist Notes Repository
+    </footer>
+
+    <script>
+        let notesData = {};
+        let currentPath = [];
+
+        // Fetch the notes.json configuration on load
+        fetch('notes.json')
+            .then(response => response.json())
+            .then(data => {
+                notesData = data;
+                render();
+            })
+            .catch(err => {
+                document.getElementById('contentGrid').innerHTML = `<p class="text-red-500 col-span-full text-center">Failed to load notes manifest.</p>`;
+            });
+
+        function getCurrentFolder() {
+            let current = notesData;
+            for (let segment of currentPath) {
+                current = current.children.find(c => c.name === segment);
+            }
+            return current;
+        }
+
+        function render() {
+            const grid = document.getElementById('contentGrid');
+            const breadcrumb = document.getElementById('breadcrumb');
+            grid.innerHTML = '';
+
+            // Update Breadcrumb UI
+            let bHtml = `<span class="cursor-pointer hover:underline text-slate-600" onclick="currentPath=[]; render();">Home</span>`;
+            let pathAcc = [];
+            currentPath.forEach(seg => {
+                pathAcc.push(seg);
+                let pCopy = [...pathAcc];
+                bHtml += ` / <span class="cursor-pointer hover:underline text-indigo-600" onclick="currentPath = ${JSON.stringify(pCopy)}; render();">${seg}</span>`;
+            });
+            breadcrumb.innerHTML = bHtml;
+
+            const folder = getCurrentFolder();
+            if (!folder || !folder.children || folder.children.length === 0) {
+                grid.innerHTML = `<p class="text-slate-400 col-span-full text-center py-10">This folder is empty.</p>`;
+                return;
+            }
+
+            folder.children.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer";
+                
+                if (item.type === 'folder') {
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">📁</span>
+                            <span class="font-medium text-slate-700">${item.name}</span>
+                        </div>
+                        <span class="text-slate-400 text-sm">→</span>`;
+                    card.onclick = () => {
+                        currentPath.push(item.name);
+                        render();
+                    };
+                } else {
+                    // Determine icon based on file extension
+                    let icon = '📄';
+                    let actionText = 'View';
+                    if (item.name.endsWith('.docx') || item.name.endsWith('.doc')) {
+                        icon = '📝';
+                        actionText = 'Download';
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3 truncate">
+                            <span class="text-2xl">${icon}</span>
+                            <span class="font-medium text-slate-700 truncate">${item.name}</span>
+                        </div>
+                        <a href="${item.path}" target="_blank" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-md font-medium hover:bg-indigo-100 transition-colors">${actionText}</a>`;
+                }
+                grid.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
