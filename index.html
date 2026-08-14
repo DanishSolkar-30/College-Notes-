@@ -9,15 +9,17 @@
     <style>
         /* Explicit Theme Styling */
         body.light-theme { background-color: #f8fafc; color: #1e293b; }
-        body.light-theme header, body.light-theme footer { background-color: #ffffff; border-color: #e2e8f0; color: #1e293b; }
+        body.light-theme header, body.light-theme footer, body.light-theme .theme-sidebar { background-color: #ffffff; border-color: #e2e8f0; color: #1e293b; }
         body.light-theme .theme-card { background-color: #ffffff; border-color: #e2e8f0; color: #334155; }
         body.light-theme .theme-input { background-color: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
+        body.light-theme .sidebar-link:hover { background-color: #f1f5f9; color: #4f46e5; }
         body.light-theme .modal-bg { background-color: rgba(15, 23, 42, 0.5); }
         
         body.dark-theme { background-color: #030712; color: #f1f5f9; }
-        body.dark-theme header, body.dark-theme footer { background-color: #0f172a; border-color: #1e293b; color: #f1f5f9; }
+        body.dark-theme header, body.dark-theme footer, body.dark-theme .theme-sidebar { background-color: #0f172a; border-color: #1e293b; color: #f1f5f9; }
         body.dark-theme .theme-card { background-color: #0f172a; border-color: #1e293b; color: #e2e8f0; }
         body.dark-theme .theme-input { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+        body.dark-theme .sidebar-link:hover { background-color: #1e293b; color: #818cf8; }
         body.dark-theme .modal-bg { background-color: rgba(3, 7, 18, 0.7); }
     </style>
     <script>
@@ -31,18 +33,17 @@
 <body class="light-theme min-h-screen flex flex-col font-sans transition-colors duration-200">
 
     <!-- Header Section -->
-    <header class="border-b py-5 px-8 shadow-xs sticky top-0 z-10 transition-colors duration-200">
-        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+    <header class="border-b py-4 px-6 md:px-8 shadow-xs sticky top-0 z-20 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center justify-between w-full sm:w-auto">
+                <h1 class="text-xl font-bold tracking-tight flex items-center gap-2 cursor-pointer" onclick="navigateTo(-1)">
                     <span>📚</span> College Notes Portal
                 </h1>
-                <p class="text-sm opacity-75">Structured repository for all semesters, lab manuals, and study materials.</p>
             </div>
             
-            <div class="flex items-center gap-3 w-full md:w-auto">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <!-- Global Live Search Bar -->
-                <div class="w-full md:w-72">
+                <div class="w-full sm:w-72">
                     <input type="text" id="searchInput" placeholder="Search any note or subject..." 
                         oninput="handleSearch(this.value)"
                         class="theme-input w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
@@ -55,22 +56,54 @@
         </div>
     </header>
 
-    <!-- Main Dynamic Container -->
-    <main class="max-w-5xl mx-auto w-full p-6 flex-grow">
+    <!-- Main App Layout (Sidebar + Content Container) -->
+    <div class="max-w-7xl mx-auto w-full flex flex-col md:flex-row flex-grow">
         
-        <!-- Breadcrumb Navigation Bar -->
-        <nav id="breadcrumb" aria-label="Breadcrumb" class="text-sm font-medium mb-6 flex items-center gap-2 overflow-x-auto pb-2">
-            <!-- Dynamically populated -->
-        </nav>
+        <!-- Sidebar Navigation -->
+        <aside class="theme-sidebar w-full md:w-64 border-b md:border-b-0 md:border-r p-6 flex flex-col shrink-0 justify-between">
+            <div>
+                <!-- User Profile Header -->
+                <div class="flex items-center gap-3 pb-6 mb-6 border-b">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-lg shrink-0">
+                        DS
+                    </div>
+                    <div class="truncate">
+                        <p class="font-semibold text-sm truncate">Danish Solkar</p>
+                        <p class="text-xs opacity-60 truncate">Student Repository</p>
+                    </div>
+                </div>
 
-        <!-- Content Grid (Folders & Files) -->
-        <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            <!-- Loading state -->
-            <div class="col-span-full text-center py-16 opacity-60">
-                <p class="animate-pulse">Loading repository notes...</p>
+                <h2 class="text-xs font-bold uppercase tracking-wider opacity-50 mb-3">Quick Navigation</h2>
+                <nav id="sidebarNav" class="space-y-1">
+                    <button onclick="navigateTo(-1)" class="sidebar-link w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
+                        <span>🏠</span> Home
+                    </button>
+                    <!-- Dynamically populated top-level folders -->
+                </nav>
             </div>
-        </div>
-    </main>
+            
+            <div class="pt-6 mt-6 border-t text-xs opacity-50 text-center md:text-left">
+                <span>Personal Notes Hub</span>
+            </div>
+        </aside>
+
+        <!-- Main Dynamic Content Area -->
+        <main class="flex-grow p-6 md:p-8 overflow-y-auto">
+            
+            <!-- Breadcrumb Navigation Bar -->
+            <nav id="breadcrumb" aria-label="Breadcrumb" class="text-sm font-medium mb-6 flex items-center gap-2 overflow-x-auto pb-2">
+                <!-- Dynamically populated -->
+            </nav>
+
+            <!-- Content Grid (Folders & Files) -->
+            <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Loading state -->
+                <div class="col-span-full text-center py-16 opacity-60">
+                    <p class="animate-pulse">Loading repository notes...</p>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <!-- File Preview Modal Overlay -->
     <div id="previewModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs">
@@ -153,6 +186,7 @@
                 const data = await response.json();
                 
                 buildFileTree(data.tree);
+                renderSidebar();
                 render();
             } catch (err) {
                 console.error(err);
@@ -199,6 +233,28 @@
             repoData = root;
         }
 
+        function renderSidebar() {
+            const sidebarNav = document.getElementById('sidebarNav');
+            let html = `
+                <button onclick="navigateTo(-1)" class="sidebar-link w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer ${currentPath.length === 0 && !isSearching ? 'bg-indigo-500/10 text-indigo-500 font-semibold' : ''}">
+                    <span>🏠</span> Home
+                </button>`;
+
+            if (repoData && repoData.children) {
+                repoData.children.forEach(item => {
+                    if (item.type === 'folder') {
+                        const isActive = currentPath.length > 0 && currentPath[0] === item.name && !isSearching;
+                        html += `
+                            <button onclick="currentPath = ['${item.name}']; isSearching = false; document.getElementById('searchInput').value=''; render(); renderSidebar();" 
+                                class="sidebar-link w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer ${isActive ? 'bg-indigo-500/10 text-indigo-500 font-semibold' : ''}">
+                                <span>📁</span> <span class="truncate">${item.name}</span>
+                            </button>`;
+                    }
+                });
+            }
+            sidebarNav.innerHTML = html;
+        }
+
         function getCurrentFolder() {
             let current = repoData;
             for (let segment of currentPath) {
@@ -213,6 +269,7 @@
             searchQuery = query.trim();
             isSearching = searchQuery.length > 0;
             render();
+            renderSidebar();
         }
 
         function navigateTo(index) {
@@ -224,6 +281,7 @@
             isSearching = false;
             document.getElementById('searchInput').value = '';
             render();
+            renderSidebar();
         }
 
         function render() {
@@ -289,6 +347,7 @@
                 card.onclick = () => {
                     currentPath.push(item.name);
                     render();
+                    renderSidebar();
                 };
             } else {
                 let icon = '📄';
@@ -355,7 +414,6 @@
             bodyContainer.innerHTML = '';
 
             if (lowerName.endsWith('.pdf')) {
-                // Uses Mozilla's PDF.js built-in web viewer wrapper to correctly render GitHub raw PDFs
                 const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(item.path)}`;
                 bodyContainer.innerHTML = `<iframe src="${viewerUrl}" class="w-full h-full border-0"></iframe>`;
             } else {
