@@ -1,26 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>College Notes Portal</title>
     <!-- Tailwind CSS v4 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script>
+        // Check local storage or system preference for dark mode
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
     <!-- Header Section -->
-    <header class="bg-white border-b border-slate-200 py-6 px-8 shadow-xs sticky top-0 z-10">
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-5 px-8 shadow-xs sticky top-0 z-10 transition-colors duration-200">
         <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-slate-900">College Notes Portal</h1>
-                <p class="text-sm text-slate-500">Structured repository for all semesters and subjects.</p>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📚</span> College Notes Portal
+                </h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Structured repository for all semesters, lab manuals, and study materials.</p>
             </div>
-            <!-- Global Live Search Bar -->
-            <div class="w-full md:w-80">
-                <input type="text" id="searchInput" placeholder="Search any note or subject..." 
-                    oninput="handleSearch(this.value)"
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-slate-50/50">
+            
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <!-- Global Live Search Bar -->
+                <div class="w-full md:w-72">
+                    <input type="text" id="searchInput" placeholder="Search any note or subject..." 
+                        oninput="handleSearch(this.value)"
+                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-slate-50/50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+                <!-- Dark Mode Toggle Button -->
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0" aria-label="Toggle Theme">
+                    <span id="themeIcon" class="text-base">🌙</span>
+                </button>
             </div>
         </div>
     </header>
@@ -36,14 +53,14 @@
         <!-- Content Grid (Folders & Files) -->
         <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <!-- Loading state -->
-            <div class="col-span-full text-center py-16 text-slate-400">
+            <div class="col-span-full text-center py-16 text-slate-400 dark:text-slate-500">
                 <p class="animate-pulse">Loading repository notes...</p>
             </div>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-400 dark:text-slate-500 transition-colors duration-200">
         College Notes Repository • Auto-Synced via GitHub API
     </footer>
 
@@ -53,10 +70,29 @@
         const GITHUB_REPO = "College-Notes-";
         
         let repoData = { name: "Home", type: "folder", children: [] };
-        let currentPath = []; // Tracks exact folder hierarchy steps
+        let currentPath = []; 
         let isSearching = false;
         let searchQuery = "";
         let flatFileList = [];
+
+        // Set initial icon for theme button
+        updateThemeIcon();
+
+        function toggleDarkMode() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+        }
 
         async function fetchRepoTree() {
             try {
@@ -69,7 +105,7 @@
             } catch (err) {
                 console.error(err);
                 document.getElementById('contentGrid').innerHTML = `
-                    <div class="col-span-full text-center py-12 text-red-500 bg-white rounded-xl border border-slate-200">
+                    <div class="col-span-full text-center py-12 text-red-500 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                         <p class="font-medium">Could not automatically load repository contents.</p>
                         <p class="text-xs text-slate-400 mt-1">Please verify your repository configuration.</p>
                     </div>`;
@@ -80,7 +116,6 @@
             let root = { name: "Home", type: "folder", children: [] };
             
             gitFiles.forEach(file => {
-                // Ignore system files, index.html, or configuration remnants
                 if (file.path === "index.html" || file.path === "notes.json" || file.path.startsWith(".")) return;
 
                 const parts = file.path.split("/");
@@ -112,13 +147,12 @@
             repoData = root;
         }
 
-        // Resolves the exact folder object based on the currentPath array
         function getCurrentFolder() {
             let current = repoData;
             for (let segment of currentPath) {
                 if (!current.children) return null;
                 current = current.children.find(c => c.name === segment);
-                if (!current) return repoData; // Fallback safety check
+                if (!current) return repoData;
             }
             return current;
         }
@@ -129,7 +163,6 @@
             render();
         }
 
-        // Robust navigation jump function for clean backtracking
         function navigateTo(index) {
             if (index === -1) {
                 currentPath = [];
@@ -146,20 +179,19 @@
             const breadcrumb = document.getElementById('breadcrumb');
             grid.innerHTML = '';
 
-            // 1. Render Search Results View
             if (isSearching) {
                 breadcrumb.innerHTML = `
-                    <span class="text-slate-500 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>
-                    <span class="text-slate-300">/</span>
-                    <span class="text-indigo-600 font-semibold">Search Results for "${searchQuery}"</span>`;
+                    <span class="text-slate-500 dark:text-slate-400 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>
+                    <span class="text-slate-300 dark:text-slate-700">/</span>
+                    <span class="text-indigo-600 dark:text-indigo-400 font-semibold">Search Results for "${searchQuery}"</span>`;
 
                 const matchedFiles = flatFileList.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 
                 if (matchedFiles.length === 0) {
                     grid.innerHTML = `
-                        <div class="col-span-full text-center py-16 bg-white rounded-xl border border-slate-200">
+                        <div class="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                             <p class="text-3xl mb-2">🔍</p>
-                            <p class="text-slate-600 font-medium">No matching notes found</p>
+                            <p class="text-slate-600 dark:text-slate-300 font-medium">No matching notes found</p>
                         </div>`;
                     return;
                 }
@@ -170,20 +202,18 @@
                 return;
             }
 
-            // 2. Render Precise Breadcrumb Navigation (Backtracking Support)
-            let bHtml = `<span class="text-slate-600 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>`;
+            let bHtml = `<span class="text-slate-600 dark:text-slate-400 cursor-pointer hover:underline" onclick="navigateTo(-1)">Home</span>`;
             currentPath.forEach((segment, index) => {
-                bHtml += `<span class="text-slate-300">/</span><span class="text-indigo-600 cursor-pointer hover:underline" onclick="navigateTo(${index})">${segment}</span>`;
+                bHtml += `<span class="text-slate-300 dark:text-slate-700">/</span><span class="text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" onclick="navigateTo(${index})">${segment}</span>`;
             });
             breadcrumb.innerHTML = bHtml;
 
-            // 3. Render Folder Contents
             const folder = getCurrentFolder();
             if (!folder || !folder.children || folder.children.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full text-center py-16 bg-white rounded-xl border border-slate-200">
+                    <div class="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                         <p class="text-3xl mb-2">📂</p>
-                        <p class="text-slate-600 font-medium">This folder is empty</p>
+                        <p class="text-slate-600 dark:text-slate-300 font-medium">This folder is empty</p>
                     </div>`;
                 return;
             }
@@ -195,13 +225,13 @@
 
         function createCard(item) {
             const card = document.createElement('div');
-            card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer";
+            card.className = "bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer";
 
             if (item.type === 'folder') {
                 card.innerHTML = `
                     <div class="flex items-center gap-3 truncate">
                         <span class="text-2xl">📁</span>
-                        <span class="font-medium text-slate-700 group-hover:text-indigo-600 transition-colors truncate">${item.name}</span>
+                        <span class="font-medium text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">${item.name}</span>
                     </div>
                     <span class="text-slate-400 text-sm group-hover:translate-x-1 transition-transform">→</span>`;
                 card.onclick = () => {
@@ -210,23 +240,39 @@
                 };
             } else {
                 let icon = '📄';
-                let actionText = 'View';
-                let actionClass = 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100';
-
-                if (item.name.endsWith('.docx') || item.name.endsWith('.doc')) {
+                let badgeText = 'PDF';
+                let badgeClass = 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400';
+                
+                const lowerName = item.name.toLowerCase();
+                if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
                     icon = '📝';
-                    actionText = 'Download';
-                    actionClass = 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100';
+                    badgeText = 'Word';
+                    badgeClass = 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400';
+                } else if (lowerName.endsWith('.pptx') || lowerName.endsWith('.ppt')) {
+                    icon = '📊';
+                    badgeText = 'PPT';
+                    badgeClass = 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400';
+                } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+                    icon = '📈';
+                    badgeText = 'Excel';
+                    badgeClass = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400';
+                } else if (lowerName.endsWith('.zip') || lowerName.endsWith('.rar')) {
+                    icon = '📦';
+                    badgeText = 'Archive';
+                    badgeClass = 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400';
                 }
 
                 card.innerHTML = `
                     <div class="flex items-center gap-3 truncate">
                         <span class="text-2xl">${icon}</span>
-                        <span class="font-medium text-slate-700 truncate">${item.name}</span>
+                        <div class="truncate">
+                            <span class="font-medium text-slate-700 dark:text-slate-200 block truncate text-sm">${item.name}</span>
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${badgeClass}">${badgeText}</span>
+                        </div>
                     </div>
                     <a href="${item.path}" target="_blank" rel="noopener noreferrer" 
-                       class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${actionClass}">
-                       ${actionText}
+                       class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400 dark:hover:bg-indigo-900/50 shrink-0 ml-2">
+                       Open
                     </a>`;
             }
             return card;
