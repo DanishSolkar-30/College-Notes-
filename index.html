@@ -18,6 +18,7 @@
         body.light-theme .modal-bg { background-color: rgba(15, 23, 42, 0.5); }
         body.light-theme .skeleton-bg { background-color: #e2e8f0; }
         body.light-theme .toolbar-bg { background-color: rgba(241, 245, 249, 0.8); border-color: #cbd5e1; }
+        body.light-theme .hero-gradient { background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(99, 102, 241, 0.03) 100%); border-color: #e2e8f0; }
         
         body.dark-theme { background-color: #030712; color: #f1f5f9; }
         body.dark-theme header, body.dark-theme footer, body.dark-theme .theme-sidebar { background-color: #0f172a; border-color: #1e293b; color: #f1f5f9; }
@@ -27,6 +28,7 @@
         body.dark-theme .modal-bg { background-color: rgba(3, 7, 18, 0.7); }
         body.dark-theme .skeleton-bg { background-color: #1e293b; }
         body.dark-theme .toolbar-bg { background-color: rgba(15, 23, 42, 0.8); border-color: #334155; }
+        body.dark-theme .hero-gradient { background: linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(15, 23, 42, 0.4) 100%); border-color: #1e293b; }
     </style>
     <script>
         // Prevent theme flash on load
@@ -132,6 +134,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Dynamic Welcome Banner Container (Shown on Home view only) -->
+            <div id="welcomeBannerContainer"></div>
 
             <!-- Content Grid/List Container -->
             <div id="contentGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -399,12 +404,55 @@
         function render() {
             const grid = document.getElementById('contentGrid');
             const breadcrumb = document.getElementById('breadcrumb');
+            const welcomeBanner = document.getElementById('welcomeBannerContainer');
+            
             grid.innerHTML = '';
 
             if (viewMode === 'list') {
                 grid.className = "flex flex-col gap-2";
             } else {
                 grid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
+            }
+
+            // Render Welcome Banner only on Home root view and when not searching
+            if (currentPath.length === 0 && !isSearching) {
+                const totalFolders = repoData.children ? repoData.children.filter(i => i.type === 'folder').length : 0;
+                welcomeBanner.innerHTML = `
+                    <div class="hero-gradient p-6 md:p-8 rounded-2xl border mb-8 shadow-xs">
+                        <div class="max-w-3xl">
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-500 mb-3">
+                                Hello there!!
+                            </span>
+                            <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-3">
+                                Welcome to my college notes portal
+                            </h2>
+                            <p class="text-sm md:text-base opacity-80 leading-relaxed mb-4">
+                                I am Danish Altaf Solkar and this is a personal notes portal. Feel free to use it and best of luck !!
+                            </p>
+                            <p class="text-sm md:text-base opacity-80 leading-relaxed mb-6">
+                                The objective of this portal is to provide a structured, fast, and distraction-free hub for organizing, previewing, and accessing all my coursework notes, programming assignments, and study materials in one unified place.
+                            </p>
+                            <div class="flex flex-wrap items-center gap-6 pt-4 border-t border-slate-200/50 dark:border-slate-800 text-xs font-medium opacity-80">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span>Live Sync via GitHub API</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span>📁</span>
+                                    <span>${totalFolders} Main Subjects / Folders</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span>📄</span>
+                                    <span>${flatFileList.length} Total Documents Indexed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold uppercase tracking-wider opacity-60">Browse Subjects & Folders</h3>
+                    </div>`;
+            } else {
+                welcomeBanner.innerHTML = '';
             }
 
             if (isSearching) {
