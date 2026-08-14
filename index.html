@@ -40,6 +40,9 @@
 </head>
 <body class="light-theme min-h-screen flex flex-col font-sans transition-colors duration-200">
 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
     <!-- Header Section -->
     <header class="border-b py-4 px-6 md:px-8 shadow-xs sticky top-0 z-20 transition-colors duration-200">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -81,6 +84,16 @@
                     </div>
                 </div>
 
+                <!-- Starred Folders Section -->
+                <div id="starredSection" class="mb-6 hidden">
+                    <h2 class="text-xs font-bold uppercase tracking-wider opacity-50 mb-3 flex items-center gap-1.5">
+                        <span>⭐</span> Starred Folders
+                    </h2>
+                    <nav id="starredNav" class="space-y-1">
+                        <!-- Dynamically populated starred folders -->
+                    </nav>
+                </div>
+
                 <h2 class="text-xs font-bold uppercase tracking-wider opacity-50 mb-3">Quick Navigation</h2>
                 <nav id="sidebarNav" class="space-y-1">
                     <button onclick="navigateTo(-1)" class="sidebar-link w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
@@ -101,9 +114,11 @@
             <!-- Breadcrumb Navigation & Toolbar -->
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <!-- Breadcrumb Navigation Bar -->
-                <nav id="breadcrumb" aria-label="Breadcrumb" class="text-sm font-medium flex items-center gap-2 overflow-x-auto pb-1">
-                    <!-- Dynamically populated -->
-                </nav>
+                <div class="flex items-center gap-3 overflow-x-auto pb-1">
+                    <nav id="breadcrumb" aria-label="Breadcrumb" class="text-sm font-medium flex items-center gap-2">
+                        <!-- Dynamically populated -->
+                    </nav>
+                </div>
 
                 <!-- Tools Toolbar (File Type Filter + View Mode Switcher) -->
                 <div class="flex flex-wrap items-center gap-3 self-start lg:self-auto shrink-0">
@@ -215,6 +230,7 @@
         let selectedFileType = "all";
         let flatFileList = [];
         let viewMode = localStorage.getItem('viewMode') || 'grid';
+        let starredFolders = JSON.parse(localStorage.getItem('starredFolders') || '[]');
 
         document.addEventListener("DOMContentLoaded", () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
@@ -226,6 +242,67 @@
                 if (e.key === 'Escape') closeModal();
             });
         });
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const isDark = document.body.classList.contains('dark-theme');
+            
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border shadow-lg text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+                isDark ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+            }`;
+            
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : 'ℹ️'}</span> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.2s ease';
+                setTimeout(() => toast.remove(), 200);
+            }, 2500);
+        }
+
+        function findFolderPath(node, targetName, pathSoFar = []) {
+            if (!node || !node.children) return null;
+            for (let child of node.children) {
+                if (child.type === 'folder') {
+                    if (child.name === targetName) {
+                        return [...pathSoFar, child.name];
+                    }
+                    const found = findFolderPath(child, targetName, [...pathSoFar, child.name]);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function openStarredFolder(folderName) {
+            const fullPath = findFolderPath(repoData, folderName);
+            if (fullPath) {
+                currentPath = fullPath;
+            } else {
+                currentPath = [folderName];
+            }
+            isSearching = false;
+            document.getElementById('searchInput').value = '';
+            render();
+            renderSidebar();
+        }
+
+        function toggleStar(folderName, event) {
+            if (event) event.stopPropagation();
+            const index = starredFolders.indexOf(folderName);
+            if (index > -1) {
+                starredFolders.splice(index, 1);
+                showToast(`Unstarred folder "${folderName}"`);
+            } else {
+                starredFolders.push(folderName);
+                showToast(`Starred folder "${folderName}"`);
+            }
+            localStorage.setItem('starredFolders', JSON.stringify(starredFolders));
+            renderSidebar();
+            render();
+        }
 
         function toggleDarkMode() {
             const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
@@ -314,9 +391,9 @@
                     if (!existingNode) {
                         if (isLast && file.type === "blob") {
                             const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${file.path}`;
-                            const newNode = { name: part, type: "file", path: rawUrl };
+                            const newNode = { name: part, type: "file", path: rawUrl, relativePath: file.path };
                             currentLevel.push(newNode);
-                            flatFileList.push({ name: part, path: rawUrl });
+                            flatFileList.push({ name: part, path: rawUrl, relativePath: file.path });
                         } else {
                             const newNode = { name: part, type: "folder", children: [] };
                             currentLevel.push(newNode);
@@ -335,6 +412,33 @@
 
         function renderSidebar() {
             const sidebarNav = document.getElementById('sidebarNav');
+            const starredSection = document.getElementById('starredSection');
+            const starredNav = document.getElementById('starredNav');
+
+            // Render Starred Section
+            if (starredFolders.length > 0) {
+                starredSection.classList.remove('hidden');
+                let sHtml = '';
+                starredFolders.forEach(folderName => {
+                    const fullPath = findFolderPath(repoData, folderName) || [folderName];
+                    const isStarredActive = currentPath.length > 0 && currentPath[currentPath.length - 1] === folderName && !isSearching;
+                    sHtml += `
+                        <div class="flex items-center justify-between group/star rounded-lg transition-colors ${isStarredActive ? 'bg-indigo-500/10 text-indigo-500 font-semibold' : 'hover:bg-indigo-500/5'}">
+                            <button onclick="openStarredFolder('${folderName.replace(/'/g, "\\'")}')" 
+                                class="w-full text-left px-3 py-2 text-sm font-medium flex items-center gap-2 cursor-pointer truncate">
+                                <span>📁</span> <span class="truncate">${folderName}</span>
+                            </button>
+                            <button onclick="toggleStar('${folderName.replace(/'/g, "\\'")}', event)" title="Unstar folder" class="px-2 py-2 opacity-60 hover:opacity-100 text-amber-400 text-xs shrink-0 cursor-pointer">
+                                ★
+                            </button>
+                        </div>`;
+                });
+                starredNav.innerHTML = sHtml;
+            } else {
+                starredSection.classList.add('hidden');
+            }
+
+            // Render Main Navigation
             let html = `
                 <button onclick="navigateTo(-1)" class="sidebar-link w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer ${currentPath.length === 0 && !isSearching ? 'bg-indigo-500/10 text-indigo-500 font-semibold' : ''}">
                     <span>🏠</span> Home
@@ -529,12 +633,18 @@
             }
 
             if (item.type === 'folder') {
+                const isStarred = starredFolders.includes(item.name);
                 card.innerHTML = `
                     <div class="flex items-center gap-3 truncate">
                         <span class="text-2xl">📁</span>
                         <span class="font-medium group-hover:text-indigo-500 transition-colors ${viewMode === 'list' ? 'whitespace-normal break-words text-sm' : 'truncate'}">${item.name}</span>
                     </div>
-                    <span class="opacity-50 text-sm group-hover:translate-x-1 transition-transform shrink-0 ml-2">→</span>`;
+                    <div class="flex items-center gap-2 shrink-0 ml-2">
+                        <button type="button" onclick="toggleStar('${item.name.replace(/'/g, "\\'")}', event)" title="${isStarred ? 'Unstar folder' : 'Star folder'}" class="p-2 rounded-lg border theme-input hover:bg-amber-500/10 hover:text-amber-500 transition-colors text-xs cursor-pointer ${isStarred ? 'text-amber-400 border-amber-400/40' : 'opacity-40 hover:opacity-150'}">
+                            ${isStarred ? '★' : '☆'}
+                        </button>
+                        <span class="opacity-50 text-sm group-hover:translate-x-1 transition-transform">→</span>
+                    </div>`;
                 card.onclick = () => {
                     currentPath.push(item.name);
                     render();
@@ -577,9 +687,11 @@
                                 <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${badgeClass} inline-block mt-0.5">${badgeText}</span>
                             </div>
                         </div>
-                        <button type="button" class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shrink-0 ml-2 cursor-pointer">
-                           Preview
-                        </button>`;
+                        <div class="shrink-0 ml-2">
+                            <button type="button" class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer">
+                               Preview
+                            </button>
+                        </div>`;
                 } else {
                     card.innerHTML = `
                         <div class="flex items-center gap-3 truncate">
@@ -589,9 +701,11 @@
                                 <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${badgeClass}">${badgeText}</span>
                             </div>
                         </div>
-                        <button type="button" class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shrink-0 ml-2 cursor-pointer">
-                           Preview
-                        </button>`;
+                        <div class="shrink-0 ml-2">
+                            <button type="button" class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer">
+                               Preview
+                            </button>
+                        </div>`;
                 }
                 
                 card.onclick = (e) => {
