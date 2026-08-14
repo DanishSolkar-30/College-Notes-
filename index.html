@@ -7,19 +7,20 @@
     <!-- Tailwind CSS v4 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* Explicit Theme Styling for Bulletproof Switching */
+        /* Explicit Theme Styling */
         body.light-theme { background-color: #f8fafc; color: #1e293b; }
         body.light-theme header, body.light-theme footer { background-color: #ffffff; border-color: #e2e8f0; color: #1e293b; }
         body.light-theme .theme-card { background-color: #ffffff; border-color: #e2e8f0; color: #334155; }
         body.light-theme .theme-input { background-color: #f8fafc; border-color: #cbd5e1; color: #1e293b; }
+        body.light-theme .modal-bg { background-color: rgba(15, 23, 42, 0.5); }
         
         body.dark-theme { background-color: #030712; color: #f1f5f9; }
         body.dark-theme header, body.dark-theme footer { background-color: #0f172a; border-color: #1e293b; color: #f1f5f9; }
         body.dark-theme .theme-card { background-color: #0f172a; border-color: #1e293b; color: #e2e8f0; }
         body.dark-theme .theme-input { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+        body.dark-theme .modal-bg { background-color: rgba(3, 7, 18, 0.7); }
     </style>
     <script>
-        // Initialize theme before render
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.className = 'dark-mode';
         } else {
@@ -71,6 +72,32 @@
         </div>
     </main>
 
+    <!-- File Preview Modal Overlay -->
+    <div id="previewModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs">
+        <div class="theme-card w-full max-w-4xl h-[85vh] rounded-2xl border shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+                <div class="flex items-center gap-3 truncate">
+                    <span id="modalFileIcon" class="text-2xl">📄</span>
+                    <h3 id="modalFileName" class="font-semibold text-base truncate">Document Preview</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a id="modalDownloadBtn" href="#" target="_blank" rel="noopener noreferrer" 
+                       class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500 text-white hover:bg-indigo-600">
+                       Download
+                    </a>
+                    <button type="button" onclick="closeModal()" class="p-1.5 rounded-lg opacity-70 hover:opacity-100 hover:bg-slate-500/10 cursor-pointer text-lg font-bold" aria-label="Close Modal">
+                        ✕
+                    </button>
+                </div>
+            </div>
+            <!-- Modal Body Container -->
+            <div id="modalBodyContainer" class="flex-grow bg-slate-100 dark:bg-slate-950 flex items-center justify-center relative overflow-hidden">
+                <!-- Dynamically injected preview iframe or container -->
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="border-t py-4 text-center text-xs opacity-60 transition-colors duration-200">
         College Notes Repository • Auto-Synced via GitHub API
@@ -87,11 +114,14 @@
         let searchQuery = "";
         let flatFileList = [];
 
-        // Set initial theme class on body when script loads
         document.addEventListener("DOMContentLoaded", () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             setTheme(savedTheme);
             fetchRepoTree();
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
         });
 
         function toggleDarkMode() {
@@ -292,12 +322,62 @@
                             <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${badgeClass}">${badgeText}</span>
                         </div>
                     </div>
-                    <a href="${item.path}" target="_blank" rel="noopener noreferrer" 
-                       class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shrink-0 ml-2">
-                       Open
-                    </a>`;
+                    <button type="button" class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shrink-0 ml-2 cursor-pointer">
+                       Preview
+                    </button>`;
+                
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    openModal(item);
+                };
             }
             return card;
+        }
+
+        function openModal(item) {
+            const modal = document.getElementById('previewModal');
+            const modalName = document.getElementById('modalFileName');
+            const modalIcon = document.getElementById('modalFileIcon');
+            const modalDownload = document.getElementById('modalDownloadBtn');
+            const bodyContainer = document.getElementById('modalBodyContainer');
+
+            modalName.textContent = item.name;
+            modalDownload.href = item.path;
+
+            const lowerName = item.name.toLowerCase();
+            let icon = '📄';
+            if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) icon = '📝';
+            else if (lowerName.endsWith('.pptx') || lowerName.endsWith('.ppt')) icon = '📊';
+            else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) icon = '📈';
+            else if (lowerName.endsWith('.zip') || lowerName.endsWith('.rar')) icon = '📦';
+            modalIcon.textContent = icon;
+
+            bodyContainer.innerHTML = '';
+
+            if (lowerName.endsWith('.pdf')) {
+                // Uses Mozilla's PDF.js built-in web viewer wrapper to correctly render GitHub raw PDFs
+                const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(item.path)}`;
+                bodyContainer.innerHTML = `<iframe src="${viewerUrl}" class="w-full h-full border-0"></iframe>`;
+            } else {
+                bodyContainer.innerHTML = `
+                    <div class="text-center p-6">
+                        <p class="text-4xl mb-3">${icon}</p>
+                        <p class="font-semibold text-lg mb-1">Direct preview not available for this file type</p>
+                        <p class="text-sm opacity-75 mb-4">You can download or view it directly in a new tab.</p>
+                        <a href="${item.path}" target="_blank" rel="noopener noreferrer" 
+                           class="inline-block px-4 py-2 bg-indigo-500 text-white font-medium rounded-lg text-sm hover:bg-indigo-600 transition-colors">
+                           Open / Download File
+                        </a>
+                    </div>`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('previewModal');
+            modal.classList.add('hidden');
+            document.getElementById('modalBodyContainer').innerHTML = '';
         }
     </script>
 </body>
