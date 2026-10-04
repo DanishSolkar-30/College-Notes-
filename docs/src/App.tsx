@@ -183,6 +183,8 @@ const buildRepositoryTree = (items: GitHubTreeItem[]) => {
     if (
       item.path === "index.html" ||
       item.path === "notes.json" ||
+      item.path === "docs" ||
+      item.path.startsWith("docs/") ||
       item.path.startsWith(".")
     ) return;
 
