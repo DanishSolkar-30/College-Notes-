@@ -944,6 +944,37 @@ button {
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.25);
 }
 
+.pdf-preview-modal {
+  width: min(1100px, 100%);
+  height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  margin: 18px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pdf-placeholder {
+  min-height: 280px;
+  flex: 1;
+  margin: 18px 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
 .preview-head {
   display: flex;
   align-items: flex-start;

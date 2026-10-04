@@ -161,6 +161,50 @@ type GitHubTreeItem = {
   size?: number;
 };
 
+function PdfViewer({ url, title }: { url: string; title: string }) {
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    setPdfUrl(null);
+    setLoadError(false);
+
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("PDF request failed");
+        return response.blob();
+      })
+      .then((file) => {
+        objectUrl = URL.createObjectURL(new Blob([file], { type: "application/pdf" }));
+        if (controller.signal.aborted) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setPdfUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadError(true);
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url]);
+
+  if (loadError) {
+    return <div className="pdf-placeholder">Could not load this PDF. Use Download file to open it.</div>;
+  }
+
+  if (!pdfUrl) {
+    return <div className="pdf-placeholder" role="status">Loading PDF…</div>;
+  }
+
+  return <iframe className="pdf-viewer" src={pdfUrl} title={`PDF preview: ${title}`} />;
+}
+
 const formatSize = (bytes = 0) => {
   if (!bytes) return "File";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -540,7 +584,7 @@ export default function App() {
       {selected && (
         <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="preview-title">
           <button className="modal-backdrop" onClick={() => setSelected(null)} aria-label="Close preview" />
-          <div className="preview-modal">
+          <div className={`preview-modal ${selected.type === "pdf" ? "pdf-preview-modal" : ""}`}>
             <div className="preview-head">
               <div>
                 <span className="section-kicker">Document preview</span>
@@ -550,12 +594,16 @@ export default function App() {
                 <Icon name="close" />
               </button>
             </div>
-            <div className="preview-page">
-              <Icon name={typeDetails[selected.type].icon} size={44} />
-              <strong>{selected.name}</strong>
-              <span>{selected.meta}</span>
-              <p>Preview is ready. Download the original resource to read the complete document.</p>
-            </div>
+            {selected.type === "pdf" && selected.downloadUrl ? (
+              <PdfViewer url={selected.downloadUrl} title={selected.name} />
+            ) : (
+              <div className="preview-page">
+                <Icon name={typeDetails[selected.type].icon} size={44} />
+                <strong>{selected.name}</strong>
+                <span>{selected.meta}</span>
+                <p>Preview is ready. Download the original resource to read the complete document.</p>
+              </div>
+            )}
             <div className="preview-actions">
               <button className="secondary-button" onClick={() => setSelected(null)}>Cancel</button>
               <a className="primary-button" href={selected.downloadUrl} download target="_blank" rel="noreferrer"><Icon name="download" size={18} /> Download file</a>
